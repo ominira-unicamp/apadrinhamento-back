@@ -8,6 +8,8 @@ import RequireSelfMiddleware from "#middlewares/RequireSelfMiddleware.js";
 
 const routes = express.Router();
 
+routes.post("/users/signup", UserController.add);
+
 routes.use("/users", AuthMiddleware);
 
 routes.post("/users", UserController.add, RequireAdminMiddleware);
