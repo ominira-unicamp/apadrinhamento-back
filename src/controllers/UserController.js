@@ -96,6 +96,7 @@ async function update(request, response) {
         games: z.string().optional(),
         sports: z.string().optional(),
         picture: z.string().optional(),
+        telephone: z.string().regex(/^\d{11}$/, "Telefone para contato"),
     });
 
     const idSchema = z.string().uuid();
