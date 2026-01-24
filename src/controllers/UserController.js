@@ -67,7 +67,7 @@ async function add(request, response) {
             console.error("Internal Server Error in UserController.add:");
             console.error(error);
             console.error("Stack:", error.stack);
-            return response.status(500).json({ error: { message: "Internal Server Error", details: error.message } });
+            return response.status(500).json({ error: { message: "Internal Server Error" } });
         }
     }
 }
