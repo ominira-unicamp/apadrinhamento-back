@@ -10,6 +10,7 @@ import https from "node:https";
 
 import oauthRoutes from "#routes/oauth.js";
 import usersRoutes from "#routes/users.js";
+import matchingRoutes from "#routes/matching.js";
 
 import { formattedSendStatus } from "#utils/sendStatusJSONFormatter.js";
 
@@ -24,6 +25,7 @@ server.use(cookieParser());
 
 server.use(oauthRoutes);
 server.use(usersRoutes);
+server.use(matchingRoutes);
 
 if (process.env.SECURE == "true") {
     https.createServer({
