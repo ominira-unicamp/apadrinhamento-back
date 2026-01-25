@@ -22,7 +22,11 @@ routes.get("/users/getPendingApproval", UserController.getPendingApproval, Requi
 
 routes.get("/users/stats", UserController.getStats, RequireAdminMiddleware);
 
+routes.get("/users/all", UserController.getAllUsers, RequireAdminMiddleware);
+
 routes.put("/users/:id/approve", UserController.approve, RequireAdminMiddleware);
+
+routes.put("/users/:id/unapprove", UserController.unapprove, RequireAdminMiddleware);
 
 routes.get("/users/:id", UserController.read, RequireSelfMiddleware);
 

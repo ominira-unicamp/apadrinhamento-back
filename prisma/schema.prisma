@@ -29,6 +29,7 @@ model User {
   sports       String?
 
   approved  Boolean? @default(false)
+  rejected  Boolean? @default(false)
 
   godparentRelation GodparentRelation[] @relation("godparent")
   godchildRelation  GodparentRelation[] @relation("godchild")

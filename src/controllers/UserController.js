@@ -225,6 +225,38 @@ async function approve(request, response) {
     }
 }
 
+async function unapprove(request, response) {
+    const idSchema = z.string().uuid();
+
+    let id;
+
+    try {
+        id = idSchema.parse(request.params.id);
+    } catch (error) {
+        return response.status(400).json(generateFormattedError(error));
+    }
+
+    try {
+        const user = await UserService.unapprove(id);
+        return response.json(user);
+    } catch (error) {
+        console.error("Error in UserController.unapprove:");
+        console.error(error);
+        return response.sendStatus(500);
+    }
+}
+
+async function getAllUsers(_request, response) {
+    try {
+        const users = await UserService.getAllUsers();
+        return response.json(users);
+    } catch (error) {
+        console.error("Error in UserController.getAllUsers:");
+        console.error(error);
+        return response.sendStatus(500);
+    }
+}
+
 async function addGodparentRelations(request, response) {
     const bodySchema = z.record(z.array(z.string().uuid()));
 
@@ -248,4 +280,4 @@ async function addGodparentRelations(request, response) {
     }
 }
 
-export default { add, read, update, del, getToMatch, getPendingApproval, approve, getStats, addGodparentRelations };
+export default { add, read, update, del, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations };
