@@ -16,16 +16,17 @@ model User {
   picture  String?
   telephone String?
 
-  course    Course?
-  pronouns  String[]
-  ethnicity String[]
-  city      String?
-  lgbt      String[]
-  parties   Int?
-  hobby     String?
-  music     String?
-  games     String?
-  sports    String?
+  course       Course?
+  yearOfEntry  Int?
+  pronouns     String[]
+  ethnicity    String[]
+  city         String?
+  lgbt         String[]
+  parties      Int?
+  hobby        String?
+  music        String?
+  games        String?
+  sports       String?
 
   approved  Boolean? @default(false)
 
