@@ -50,6 +50,8 @@ async function read(id) {
                             sports: true,
                             parties: true,
                             city: true,
+                            telephone: true,
+                            yearOfEntry: true,
                         }
                     },
                 }
@@ -68,6 +70,8 @@ async function read(id) {
                             sports: true,
                             parties: true,
                             city: true,
+                            telephone: true,
+                            yearOfEntry: true,
                         }
                     },
                 }
@@ -179,6 +183,7 @@ async function getPendingApproval() {
         },
         where: {
             approved: false,
+            rejected: false,
             role: 'veterane',
         }
     });
@@ -193,10 +198,48 @@ async function approve(id) {
         },
         data: {
             approved: true,
+            rejected: false,
         },
     });
 
     return user;
+}
+
+async function unapprove(id) {
+    const user = await prisma.user.update({
+        where: {
+            id,
+        },
+        data: {
+            approved: false,
+            rejected: true,
+        },
+    });
+
+    return user;
+}
+
+async function getAllUsers() {
+    const users = await prisma.user.findMany({
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            course: true,
+            role: true,
+            approved: true,
+            rejected: true,
+            status: true,
+            telephone: true,
+            yearOfEntry: true,
+            createdAt: true,
+        },
+        orderBy: {
+            createdAt: 'desc',
+        },
+    });
+
+    return users;
 }
 
 async function addGodparentRelations(data) {
@@ -218,4 +261,4 @@ async function addGodparentRelations(data) {
     return relations;
 }
 
-export default { add, read, update, del, getAuthData, getToMatch, getPendingApproval, approve, getStats, addGodparentRelations };
+export default { add, read, update, del, getAuthData, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations };
