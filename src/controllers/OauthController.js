@@ -21,7 +21,9 @@ async function login(request, response) {
     const user = await UserService.getAuthData(request.body.email);
 
     if (!user) {
-        return UserController.add(request, response);
+        return response
+            .status(401)
+            .json({ error: { message: "Usuário não encontrado. Por favor, cadastre-se primeiro." } });
     }
 
     const { password } = request.body;

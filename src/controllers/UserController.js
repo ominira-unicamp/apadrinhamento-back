@@ -23,8 +23,21 @@ const s3 = new S3({
 
 async function add(request, response) {
     const bodySchema = z.object({
+        name: z.string().min(1),
         email: z.string().regex(/^[a-zA-Z][0-9]{6}@dac.unicamp.br$/),
         password: z.string().min(8).transform(async (val) => await bcrypt.hash(val, 10)),
+        telephone: z.string().regex(/^\d{11}$/, "Telefone deve conter exatamente 11 dígitos"),
+        course: z.enum(["EC", "CC"]),
+        role: z.enum(["bixe", "veterane"]),
+        pronouns: z.array(z.string()).optional(),
+        ethnicity: z.array(z.string()).optional(),
+        city: z.string().optional(),
+        lgbt: z.array(z.string()).optional(),
+        parties: z.number().int().optional(),
+        hobby: z.string().optional(),
+        music: z.string().optional(),
+        games: z.string().optional(),
+        sports: z.string().optional(),
     })
 
     let data;
@@ -54,8 +67,10 @@ async function add(request, response) {
                 .status(400)
                 .json({ error: { message: error.message, code: error } });
         } else {
-            console.error("Internal Server Error: " + error);
-            return response.sendStatus(500);
+            console.error("Internal Server Error in UserController.add:");
+            console.error(error);
+            console.error("Stack:", error.stack);
+            return response.status(500).json({ error: { message: "Internal Server Error" } });
         }
     }
 }
