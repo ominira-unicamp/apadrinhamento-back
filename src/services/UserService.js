@@ -173,6 +173,9 @@ async function getPendingApproval() {
             email: true,
             course: true,
             picture: true,
+            telephone: true,
+            yearOfEntry: true,
+            role: true,
         },
         where: {
             approved: false,

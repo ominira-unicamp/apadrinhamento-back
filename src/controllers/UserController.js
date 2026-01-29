@@ -29,6 +29,7 @@ async function add(request, response) {
         telephone: z.string().regex(/^\d{11}$/, "Telefone deve conter exatamente 11 dígitos"),
         course: z.enum(["EC", "CC"]),
         role: z.enum(["bixe", "veterane"]),
+        yearOfEntry: z.number().int().min(1900).max(new Date().getFullYear() + 1),
         pronouns: z.array(z.string()).optional(),
         ethnicity: z.array(z.string()).optional(),
         city: z.string().optional(),
@@ -100,6 +101,8 @@ async function update(request, response) {
         name: z.string().min(1, "Nome é obrigatório"),
         course: z.enum(["CC", "EC"], { required_error: "Selecione seu curso" }),
         role: z.enum(["bixe", "veterane"], { required_error: "Selecione uma opção" }),
+        telephone: z.string().regex(/^\d{11}$/, "Telefone para contato"),
+        yearOfEntry: z.number().int().min(1900).max(new Date().getFullYear() + 1),
         pronouns: z.array(z.string()),
         ethnicity: z.array(z.string()),
         city: z.string().min(1, "Informe sua cidade").refine((city) => city != 'Cidade', { message: 'Informe sua cidade' }),
@@ -111,7 +114,6 @@ async function update(request, response) {
         games: z.string().optional(),
         sports: z.string().optional(),
         picture: z.string().optional(),
-        telephone: z.string().regex(/^\d{11}$/, "Telefone para contato"),
     });
 
     const idSchema = z.string().uuid();
