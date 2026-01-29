@@ -157,7 +157,7 @@ async function getAuthData(email) {
 }
 
 async function getToMatch() {
-    const users = await prisma.$queryRaw`SELECT id, course, pronouns, ethnicity, lgbt, city, hobby, role, parties, music, games, sports FROM USERS WHERE ("role" = 'veterane' AND "approved" = true AND (SELECT COUNT(*) FROM "godparent_relations" WHERE "godparentId" = "users"."id") < 2) OR ("role" = 'bixe' AND "status" = true AND (SELECT COUNT(*) FROM "godparent_relations" WHERE "godchildId" = "users"."id") = 0)`;
+    const users = await prisma.$queryRaw`SELECT id, course, pronouns, ethnicity, lgbt, city, hobby, role, parties, music, games, sports FROM USERS WHERE ("role" = 'veterane' AND "approvalStatus" = 'APPROVED' AND (SELECT COUNT(*) FROM "godparent_relations" WHERE "godparentId" = "users"."id") < 2) OR ("role" = 'bixe' AND "status" = true AND (SELECT COUNT(*) FROM "godparent_relations" WHERE "godchildId" = "users"."id") = 0)`;
 
     const admins = await prisma.$queryRaw`SELECT id, course, pronouns, ethnicity, lgbt, city, hobby, role, parties, music, games, sports FROM USERS WHERE ("role" = 'ADMIN' AND "status" = true AND (SELECT COUNT(*) FROM "godparent_relations" WHERE "godparentId" = "users"."id") < 2)`;
 
@@ -182,8 +182,7 @@ async function getPendingApproval() {
             role: true,
         },
         where: {
-            approved: false,
-            rejected: false,
+            approvalStatus: 'PENDING',
             role: 'veterane',
         }
     });
@@ -197,8 +196,7 @@ async function approve(id) {
             id,
         },
         data: {
-            approved: true,
-            rejected: false,
+            approvalStatus: 'APPROVED',
         },
     });
 
@@ -211,8 +209,7 @@ async function unapprove(id) {
             id,
         },
         data: {
-            approved: false,
-            rejected: true,
+            approvalStatus: 'REJECTED',
         },
     });
 
@@ -227,8 +224,7 @@ async function getAllUsers() {
             email: true,
             course: true,
             role: true,
-            approved: true,
-            rejected: true,
+            approvalStatus: true,
             status: true,
             telephone: true,
             yearOfEntry: true,
