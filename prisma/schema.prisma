@@ -28,7 +28,7 @@ model User {
   games        String?
   sports       String?
 
-  approved  Boolean? @default(false)
+  approvalStatus ApprovalStatus @default(PENDING)
 
   godparentRelation GodparentRelation[] @relation("godparent")
   godchildRelation  GodparentRelation[] @relation("godchild")
@@ -50,6 +50,12 @@ enum Role {
   bixe
   veterane
   ADMIN
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model GodparentRelation {

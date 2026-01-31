@@ -50,6 +50,8 @@ async function read(id) {
                             sports: true,
                             parties: true,
                             city: true,
+                            telephone: true,
+                            yearOfEntry: true,
                         }
                     },
                 }
@@ -68,6 +70,8 @@ async function read(id) {
                             sports: true,
                             parties: true,
                             city: true,
+                            telephone: true,
+                            yearOfEntry: true,
                         }
                     },
                 }
@@ -153,7 +157,7 @@ async function getAuthData(email) {
 }
 
 async function getToMatch() {
-    const users = await prisma.$queryRaw`SELECT id, course, pronouns, ethnicity, lgbt, city, hobby, role, parties, music, games, sports FROM USERS WHERE ("role" = 'veterane' AND "approved" = true AND (SELECT COUNT(*) FROM "godparent_relations" WHERE "godparentId" = "users"."id") < 2) OR ("role" = 'bixe' AND "status" = true AND (SELECT COUNT(*) FROM "godparent_relations" WHERE "godchildId" = "users"."id") = 0)`;
+    const users = await prisma.$queryRaw`SELECT id, course, pronouns, ethnicity, lgbt, city, hobby, role, parties, music, games, sports FROM USERS WHERE ("role" = 'veterane' AND "approvalStatus" = 'APPROVED' AND (SELECT COUNT(*) FROM "godparent_relations" WHERE "godparentId" = "users"."id") < 2) OR ("role" = 'bixe' AND "status" = true AND (SELECT COUNT(*) FROM "godparent_relations" WHERE "godchildId" = "users"."id") = 0)`;
 
     const admins = await prisma.$queryRaw`SELECT id, course, pronouns, ethnicity, lgbt, city, hobby, role, parties, music, games, sports FROM USERS WHERE ("role" = 'ADMIN' AND "status" = true AND (SELECT COUNT(*) FROM "godparent_relations" WHERE "godparentId" = "users"."id") < 2)`;
 
@@ -178,7 +182,7 @@ async function getPendingApproval() {
             role: true,
         },
         where: {
-            approved: false,
+            approvalStatus: 'PENDING',
             role: 'veterane',
         }
     });
@@ -192,11 +196,46 @@ async function approve(id) {
             id,
         },
         data: {
-            approved: true,
+            approvalStatus: 'APPROVED',
         },
     });
 
     return user;
+}
+
+async function unapprove(id) {
+    const user = await prisma.user.update({
+        where: {
+            id,
+        },
+        data: {
+            approvalStatus: 'REJECTED',
+        },
+    });
+
+    return user;
+}
+
+async function getAllUsers() {
+    const users = await prisma.user.findMany({
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            course: true,
+            role: true,
+            approvalStatus: true,
+            status: true,
+            telephone: true,
+            yearOfEntry: true,
+            createdAt: true,
+        },
+        orderBy: {
+            createdAt: 'desc',
+        },
+    });
+
+    return users;
 }
 
 async function addGodparentRelations(data) {
@@ -218,4 +257,4 @@ async function addGodparentRelations(data) {
     return relations;
 }
 
-export default { add, read, update, del, getAuthData, getToMatch, getPendingApproval, approve, getStats, addGodparentRelations };
+export default { add, read, update, del, getAuthData, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations };
