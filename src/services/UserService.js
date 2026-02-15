@@ -257,4 +257,33 @@ async function addGodparentRelations(data) {
     return relations;
 }
 
-export default { add, read, update, del, getAuthData, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations };
+async function getGodparents() {
+    const godparents = await prisma.user.findMany({
+        where: {
+            OR: [
+                { role: 'veterane' },
+                { role: 'ADMIN' },
+            ],
+            status: true,
+        },
+        select: {
+            id: true,
+            name: true,
+            course: true,
+            email: true,
+            picture: true,
+            hobby: true,
+            music: true,
+            games: true,
+            sports: true,
+            parties: true,
+            city: true,
+            telephone: true,
+            yearOfEntry: true,
+        }
+    });
+
+    return godparents;
+}
+
+export default { add, read, update, del, getAuthData, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations, getGodparents };

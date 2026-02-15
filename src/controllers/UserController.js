@@ -287,4 +287,15 @@ async function addGodparentRelations(request, response) {
     }
 }
 
-export default { add, read, update, del, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations };
+async function getGodparents(_request, response) {
+    try {
+        const godparents = await UserService.getGodparents();
+        return response.json(godparents);
+    } catch (error) {
+        console.error("Error in UserController.getGodparents:");
+        console.error(error);
+        return response.sendStatus(500);
+    }
+}
+
+export default { add, read, update, del, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations, getGodparents };
