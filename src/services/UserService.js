@@ -112,26 +112,26 @@ async function getStats() {
     const vets = await prisma.user.count({
         where: {
             role: 'veterane',
-            status: true,
+            approvalStatus: 'APPROVED',
         },
     });
 
     const bixes = await prisma.user.count({
         where: {
             role: 'bixe',
-            status: true,
+            approvalStatus: 'APPROVED',
         },
     });
 
     const pending = await prisma.user.count({
         where: {
-            status: false,
+            approvalStatus: 'PENDING',
         },
     });
 
     const approved = await prisma.user.count({
         where: {
-            approved: true,
+            approvalStatus: 'APPROVED',
             role: 'veterane',
         },
     });
