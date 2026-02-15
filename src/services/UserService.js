@@ -265,6 +265,7 @@ async function getGodparents() {
                 { role: 'ADMIN' },
             ],
             status: true,
+            approvalStatus: 'APPROVED',
         },
         select: {
             id: true,
@@ -280,10 +281,18 @@ async function getGodparents() {
             city: true,
             telephone: true,
             yearOfEntry: true,
+            _count: {
+                select: {
+                    godchildRelation: true,
+                },
+            }
         }
     });
 
-    return godparents;
+    return godparents.filter(godparent => godparent._count.godchildRelation < 2).map(godparent => {
+        delete godparent._count;
+        return godparent;
+    });
 }
 
 export default { add, read, update, del, getAuthData, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations, getGodparents };
