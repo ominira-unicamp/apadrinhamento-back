@@ -257,6 +257,56 @@ async function getAllUsers(_request, response) {
     }
 }
 
+async function updatePassword(request, response) {
+    const bodySchema = z.object({
+        currentPassword: z.string().min(8, "Senha atual é obrigatória"),
+        newPassword: z.string().min(8, "Nova senha deve ter pelo menos 8 caracteres"),
+    });
+
+    const idSchema = z.string().uuid();
+
+    let data, id;
+
+    try {
+        data = await bodySchema.parseAsync(request.body);
+        id = idSchema.parse(request.params.id);
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return response.status(400).json(generateFormattedError(error));
+        }
+        console.error(error);
+        return response.sendStatus(500);
+    }
+
+    try {
+        // Get user to verify current password
+        const user = await UserService.read(id);
+        
+        if (!user) {
+            return response.sendStatus(404);
+        }
+
+        // Verify current password
+        const passwordMatch = await bcrypt.compare(data.currentPassword, user.password);
+        
+        if (!passwordMatch) {
+            return response.status(400).json({ error: { message: "Senha atual incorreta" } });
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(data.newPassword, 10);
+
+        // Update password
+        await UserService.update(id, { password: hashedPassword });
+
+        return response.json({ message: "Senha atualizada com sucesso" });
+    } catch (error) {
+        console.error("Error in UserController.updatePassword:");
+        console.error(error);
+        return response.sendStatus(500);
+    }
+}
+
 async function addGodparentRelations(request, response) {
     const bodySchema = z.record(z.array(z.string().uuid()));
 
@@ -280,4 +330,4 @@ async function addGodparentRelations(request, response) {
     }
 }
 
-export default { add, read, update, del, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations };
+export default { add, read, update, del, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations, updatePassword };
