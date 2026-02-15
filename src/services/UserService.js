@@ -50,6 +50,8 @@ async function read(id) {
                             sports: true,
                             parties: true,
                             city: true,
+                            telephone: true,
+                            yearOfEntry: true,
                         }
                     },
                 }
@@ -68,6 +70,8 @@ async function read(id) {
                             sports: true,
                             parties: true,
                             city: true,
+                            telephone: true,
+                            yearOfEntry: true,
                         }
                     },
                 }

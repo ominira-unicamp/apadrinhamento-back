@@ -2,7 +2,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { fileTypeFromBuffer } from "file-type";
-import aws from "aws-sdk";
+import { Upload } from "@aws-sdk/lib-storage";
+import { S3 } from "@aws-sdk/client-s3";
 
 import UserService from "#services/UserService.js";
 
@@ -13,9 +14,11 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
 
-const s3 = new aws.S3({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+const s3 = new S3({
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
 });
 
 async function add(request, response) {
@@ -144,13 +147,17 @@ async function update(request, response) {
                 return response.status(400).json({ error: { message: "Image too large", code: "image_too_large" } });
             }
     
-            const picUrl = await s3.upload({
-                Bucket: process.env.AWS_BUCKET_NAME,
-                Key: `${id}.${fileType.ext}`,
-                Body: img,
-                ContentType: fileType.mime,
-                ACL: 'public-read',
-            }).promise();
+            const picUrl = await new Upload({
+                client: s3,
+
+                params: {
+                    Bucket: process.env.AWS_BUCKET_NAME,
+                    Key: `${id}.${fileType.ext}`,
+                    Body: img,
+                    ContentType: fileType.mime,
+                    ACL: 'public-read',
+                },
+            }).done();
     
             data.picture = picUrl.Location;
         }
