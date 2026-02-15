@@ -32,6 +32,8 @@ routes.get("/users/:id", UserController.read, RequireSelfMiddleware);
 
 routes.put("/users/:id", UserController.update, RequireSelfMiddleware);
 
+routes.put("/users/:id/password", UserController.updatePassword, RequireSelfMiddleware);
+
 routes.delete("/users/:id", UserController.del, RequireAdminMiddleware);
 
 export default routes;
