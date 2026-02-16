@@ -136,30 +136,35 @@ async function del(id) {
 }
 
 async function getStats() {
+    // Accounts that finished signup as vets (did step-two but might not be approved yet)
     const vets = await prisma.user.count({
         where: {
             role: 'veterane',
-            approvalStatus: 'APPROVED',
+            status: true,
         },
     });
 
+    // Accounts that finished signup as bixes (did step-two)
     const bixes = await prisma.user.count({
         where: {
             role: 'bixe',
-            approvalStatus: 'APPROVED',
+            status: true,
         },
     });
 
+    // Accounts that still didn't finish signup (didn't do step-two)
     const pending = await prisma.user.count({
         where: {
-            approvalStatus: 'PENDING',
+            status: false,
         },
     });
 
+    // Approved vets whose accounts are finished
     const approved = await prisma.user.count({
         where: {
             approvalStatus: 'APPROVED',
             role: 'veterane',
+            status: true
         },
     });
 
