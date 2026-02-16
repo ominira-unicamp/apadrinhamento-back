@@ -41,6 +41,7 @@ async function add(request, response) {
         music: z.string().optional(),
         games: z.string().optional(),
         sports: z.string().optional(),
+        picture: z.string().optional(),
     })
 
     let data;
@@ -50,6 +51,41 @@ async function add(request, response) {
     } catch (error) {
         return response.status(400).json(generateFormattedError(error));
     }
+
+    try {
+        // Image validation
+        if (data.picture) {
+            const preImg = data.picture.split('base64,').pop();
+            const img = Buffer.from(preImg, 'base64');
+            const fileType = await fileTypeFromBuffer(img);
+
+            if (!fileType || !ACCEPTED_IMAGE_TYPES.includes(fileType.mime)) {
+                return response.status(400).json({ error: { message: "Invalid image type", code: "invalid_image_type" } });
+            }
+
+            if (img.length > 5 * 1024 * 1024) {
+                return response.status(400).json({ error: { message: "Image too large", code: "image_too_large" } });
+            }
+
+            const picUrl = await new Upload({
+                client: s3,
+
+                params: {
+                    Bucket: process.env.AWS_BUCKET_NAME,
+                    Key: `${id}.${fileType.ext}`,
+                    Body: img,
+                    ContentType: fileType.mime,
+                    ACL: 'public-read',
+                },
+            }).done();
+
+            data.picture = picUrl.Location;
+        }
+    } catch (error) {
+        console.error(error);
+        return response.sendStatus(500);
+    }
+
 
     try {
         const user = await UserService.add(data);
