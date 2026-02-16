@@ -271,15 +271,13 @@ async function getGodparents() {
             id: true,
             name: true,
             course: true,
-            email: true,
-            picture: true,
             hobby: true,
             music: true,
             games: true,
             sports: true,
             parties: true,
             city: true,
-            telephone: true,
+            whiteboard: true,
             yearOfEntry: true,
             _count: {
                 select: {
