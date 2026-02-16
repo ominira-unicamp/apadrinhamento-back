@@ -6,6 +6,7 @@ import { Upload } from "@aws-sdk/lib-storage";
 import { S3 } from "@aws-sdk/client-s3";
 
 import UserService from "#services/UserService.js";
+import MailingService from "#services/MailingService.js";
 
 import { EntryExistsError } from "#errors/EntryExists.js";
 
@@ -297,6 +298,39 @@ async function unapprove(request, response) {
     }
 }
 
+async function updatePassword(request, response) {
+    const bodySchema = z.object({
+        currentPassword: z.string().min(8, "Senha atual deve ter pelo menos 8 caracteres"),
+        newPassword: z.string().min(8, "Nova senha deve ter pelo menos 8 caracteres"),
+    });
+
+    const idSchema = z.string().uuid();
+
+    let data, id;
+
+    try {
+        data = await bodySchema.parseAsync(request.body);
+        id = idSchema.parse(request.params.id);
+    } catch (error) {
+        return response.status(400).json(generateFormattedError(error));
+    }
+
+    try {
+        const newPasswordHash = await bcrypt.hash(data.newPassword, 10);
+        const result = await UserService.updatePassword(id, data.currentPassword, newPasswordHash);
+
+        if (!result) {
+            return response.status(400).json({ error: { message: "Senha atual incorreta ou usuário não encontrado" } });
+        }
+
+        return response.status(200).json({ message: "Senha atualizada com sucesso" });
+    } catch (error) {
+        console.error("Error in UserController.updatePassword:");
+        console.error(error);
+        return response.sendStatus(500);
+    }
+}
+
 async function getAllUsers(_request, response) {
     try {
         const users = await UserService.getAllUsers();
@@ -342,4 +376,84 @@ async function getGodparents(_request, response) {
     }
 }
 
-export default { add, read, update, del, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations, getGodparents };
+async function resetPassword(request, response) {
+    const bodySchema = z.object({
+        email: z.string().email(),
+    });
+
+    let data;
+
+    try {
+        data = bodySchema.parse(request.body);
+    } catch (error) {
+        return response.status(400).json(generateFormattedError(error));
+    }
+
+    let user;
+    const startTime = Date.now();
+
+    try {
+        user = await UserService.findByEmail(data.email);
+    } catch (error) {
+        const elapsedTime = Date.now() - startTime;
+        const delayNeeded = Math.max(0, 300 - elapsedTime);
+        await new Promise(resolve => setTimeout(resolve, delayNeeded));
+        return response.status(200).json({ message: "If the email exists, a reset link has been sent" });
+    }
+
+    if (!user) {
+        const elapsedTime = Date.now() - startTime;
+        const delayNeeded = Math.max(0, 300 - elapsedTime);
+        await new Promise(resolve => setTimeout(resolve, delayNeeded));
+        return response.status(200).json({ message: "If the email exists, a reset link has been sent" });
+    }
+
+    try {
+        const token = await UserService.createPasswordResetToken(user);
+        await MailingService.sendResetInfo(data.email, user, token);
+        const elapsedTime = Date.now() - startTime;
+        const delayNeeded = Math.max(0, 300 - elapsedTime);
+        await new Promise(resolve => setTimeout(resolve, delayNeeded));
+        return response.status(200).json({ message: "If the email exists, a reset link has been sent" });
+    } catch (error) {
+        console.error("Error in UserController.resetPassword:");
+        console.error(error);
+        return response.sendStatus(500);
+    }
+}
+
+async function resetPasswordConfirm(request, response) {
+    const bodySchema = z.object({
+        token: z.string().min(1),
+        newPassword: z.string()
+            .min(8, "Senha deve ter pelo menos 8 caracteres")
+    });
+
+    let data;
+
+    try {
+        data = await bodySchema.parseAsync(request.body);
+    } catch (error) {
+        return response.status(400).json(generateFormattedError(error));
+    }
+
+    try {
+        const newPasswordHash = await bcrypt.hash(data.newPassword, 10);
+        const result = await UserService.consumePasswordResetToken(
+            data.token,
+            newPasswordHash,
+        );
+
+        if (!result) {
+            return response.status(400).json({ error: { message: "Invalid or expired reset token" } });
+        }
+
+        return response.status(200).json({ message: "Password updated" });
+    } catch (error) {
+        console.error("Error in UserController.resetPasswordConfirm:");
+        console.error(error);
+        return response.sendStatus(500);
+    }
+}
+
+export default { add, read, update, del, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations, getGodparents, resetPassword, resetPasswordConfirm, updatePassword };

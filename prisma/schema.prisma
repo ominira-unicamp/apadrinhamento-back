@@ -16,6 +16,8 @@ model User {
   picture   String?
   telephone String?
 
+  passwordResetTokens PasswordResetToken[]
+  
   whiteboard String?
 
   course      Course?
@@ -72,4 +74,18 @@ model GodparentRelation {
 
   @@id([godparentId, godchildId]) // Composite Primary Key
   @@map("godparent_relations") // Naming the join table explicitly
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
