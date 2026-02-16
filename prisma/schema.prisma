@@ -16,6 +16,8 @@ model User {
   picture   String?
   telephone String?
 
+  whiteboard String?
+
   course      Course?
   yearOfEntry Int?
   pronouns    String[]

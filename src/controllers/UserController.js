@@ -15,6 +15,7 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
 
 const s3 = new S3({
+    region: process.env.AWS_REGION,
     credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -115,6 +116,7 @@ async function update(request, response) {
         games: z.string().optional(),
         sports: z.string().optional(),
         picture: z.string().optional(),
+        whiteboard: z.string().optional(),
     });
 
     const idSchema = z.string().uuid();
@@ -133,7 +135,6 @@ async function update(request, response) {
     }
 
     try {
-
         // Image validation
         if (data.picture) {
             const preImg = data.picture.split('base64,').pop();
@@ -161,6 +162,34 @@ async function update(request, response) {
             }).done();
     
             data.picture = picUrl.Location;
+        }
+
+        if (data.whiteboard) {
+            const preImg = data.whiteboard.split('base64,').pop();
+            const img = Buffer.from(preImg, 'base64');
+            const fileType = await fileTypeFromBuffer(img);
+
+            if (!fileType || !ACCEPTED_IMAGE_TYPES.includes(fileType.mime)) {
+                return response.status(400).json({ error: { message: "Invalid image type", code: "invalid_image_type" } });
+            }
+
+            if (img.length > 5 * 1024 * 1024) {
+                return response.status(400).json({ error: { message: "Image too large", code: "image_too_large" } });
+            }
+
+            const whiteboardUrl = await new Upload({
+                client: s3,
+
+                params: {
+                    Bucket: process.env.AWS_BUCKET_NAME,
+                    Key: `${id}-whiteboard.${fileType.ext}`,
+                    Body: img,
+                    ContentType: fileType.mime,
+                    ACL: 'public-read',
+                },
+            }).done();
+
+            data.whiteboard = whiteboardUrl.Location;
         }
     } catch (error) {
         console.error(error);
