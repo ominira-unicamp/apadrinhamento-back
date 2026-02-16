@@ -98,17 +98,18 @@ async function read(request, response) {
 
 async function update(request, response) {
     const bodySchema = z.object({
-        name: z.string().min(1, "Nome é obrigatório"),
-        course: z.enum(["CC", "EC"], { required_error: "Selecione seu curso" }),
-        role: z.enum(["bixe", "veterane"], { required_error: "Selecione uma opção" }),
-        telephone: z.string().regex(/^\d{11}$/, "Telefone para contato"),
-        yearOfEntry: z.number().int().min(1900).max(new Date().getFullYear() + 1),
-        pronouns: z.array(z.string()),
-        ethnicity: z.array(z.string()),
-        city: z.string().min(1, "Informe sua cidade").refine((city) => city != 'Cidade', { message: 'Informe sua cidade' }),
-        approved: z.boolean().optional(),
-        lgbt: z.array(z.string()),
-        parties: z.number().min(0).max(10),
+        name: z.string().min(1, "Nome é obrigatório").optional(),
+        course: z.enum(["CC", "EC"], { required_error: "Selecione seu curso" }).optional(),
+        role: z.enum(["bixe", "veterane"], { required_error: "Selecione uma opção" }).optional(),
+        telephone: z.string().regex(/^\d{11}$/, "Telefone para contato").optional(),
+        yearOfEntry: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
+        pronouns: z.array(z.string()).optional(),
+        ethnicity: z.array(z.string()).optional(),
+        city: z.string().min(1, "Informe sua cidade").refine((city) => city != 'Cidade', { message: 'Informe sua cidade' }).optional(),
+        selectedGodparentsIds: z.array(z.string().uuid()).optional(),
+        approvalStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
+        lgbt: z.array(z.string()).optional(),
+        parties: z.number().min(0).max(10).optional(),
         hobby: z.string().optional(),
         music: z.string().optional(),
         games: z.string().optional(),
@@ -166,13 +167,27 @@ async function update(request, response) {
         return response.sendStatus(500);
     }
 
+    try {
+        if (data.selectedGodparentsIds) {
+            data.selectedGodparents = {
+                connect: data.selectedGodparentsIds.map(id => ({ id })),
+            };
+            delete data.selectedGodparentsIds;
+        }
+    } catch (error) {
+        console.error(error);
+        return response.sendStatus(500);
+    }
+
     data.status = true;
 
     try {
         const user = await UserService.update(id, data);
         return response.json(user);
     } catch (error) {
-        return response.sendStatus(404);
+        console.error("Error in UserController.update:");
+        console.error(error);
+        return response.sendStatus(500);
     }
 }
 

@@ -8,25 +8,28 @@ datasource db {
 }
 
 model User {
-  id       String  @id @default(uuid()) @db.Uuid
-  email    String  @unique
-  name     String?
-  password String
-  status   Boolean @default(false)
-  picture  String?
+  id        String  @id @default(uuid()) @db.Uuid
+  email     String  @unique
+  name      String?
+  password  String
+  status    Boolean @default(false)
+  picture   String?
   telephone String?
 
-  course       Course?
-  yearOfEntry  Int?
-  pronouns     String[]
-  ethnicity    String[]
-  city         String?
-  lgbt         String[]
-  parties      Int?
-  hobby        String?
-  music        String?
-  games        String?
-  sports       String?
+  course      Course?
+  yearOfEntry Int?
+  pronouns    String[]
+  ethnicity   String[]
+  city        String?
+  lgbt        String[]
+  parties     Int?
+  hobby       String?
+  music       String?
+  games       String?
+  sports      String?
+
+  selectedGodparents User[] @relation("selectedGodparents")
+  selectedBy         User[] @relation("selectedGodparents")
 
   approvalStatus ApprovalStatus @default(PENDING)
 
