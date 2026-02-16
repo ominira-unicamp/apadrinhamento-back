@@ -4,6 +4,7 @@ import { z } from "zod";
 import { fileTypeFromBuffer } from "file-type";
 import { Upload } from "@aws-sdk/lib-storage";
 import { S3 } from "@aws-sdk/client-s3";
+import { randomUUID } from "crypto";
 
 import UserService from "#services/UserService.js";
 import MailingService from "#services/MailingService.js";
@@ -55,6 +56,7 @@ async function add(request, response) {
     try {
         // Image validation
         if (data.picture) {
+            data.id = randomUUID();
             const preImg = data.picture.split('base64,').pop();
             const img = Buffer.from(preImg, 'base64');
             const fileType = await fileTypeFromBuffer(img);
@@ -72,7 +74,7 @@ async function add(request, response) {
 
                 params: {
                     Bucket: process.env.AWS_BUCKET_NAME,
-                    Key: `${id}.${fileType.ext}`,
+                    Key: `${data.id}.${fileType.ext}`,
                     Body: img,
                     ContentType: fileType.mime,
                     ACL: 'public-read',
