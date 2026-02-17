@@ -4,8 +4,10 @@ import { z } from "zod";
 import { fileTypeFromBuffer } from "file-type";
 import { Upload } from "@aws-sdk/lib-storage";
 import { S3 } from "@aws-sdk/client-s3";
+import { randomUUID } from "crypto";
 
 import UserService from "#services/UserService.js";
+import MailingService from "#services/MailingService.js";
 
 import { EntryExistsError } from "#errors/EntryExists.js";
 
@@ -15,6 +17,7 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
 
 const s3 = new S3({
+    region: process.env.AWS_REGION,
     credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -39,6 +42,7 @@ async function add(request, response) {
         music: z.string().optional(),
         games: z.string().optional(),
         sports: z.string().optional(),
+        picture: z.string().optional(),
     })
 
     let data;
@@ -48,6 +52,42 @@ async function add(request, response) {
     } catch (error) {
         return response.status(400).json(generateFormattedError(error));
     }
+
+    try {
+        // Image validation
+        if (data.picture) {
+            data.id = randomUUID();
+            const preImg = data.picture.split('base64,').pop();
+            const img = Buffer.from(preImg, 'base64');
+            const fileType = await fileTypeFromBuffer(img);
+
+            if (!fileType || !ACCEPTED_IMAGE_TYPES.includes(fileType.mime)) {
+                return response.status(400).json({ error: { message: "Invalid image type", code: "invalid_image_type" } });
+            }
+
+            if (img.length > 5 * 1024 * 1024) {
+                return response.status(400).json({ error: { message: "Image too large", code: "image_too_large" } });
+            }
+
+            const picUrl = await new Upload({
+                client: s3,
+
+                params: {
+                    Bucket: process.env.AWS_BUCKET_NAME,
+                    Key: `${data.id}.${fileType.ext}`,
+                    Body: img,
+                    ContentType: fileType.mime,
+                    ACL: 'public-read',
+                },
+            }).done();
+
+            data.picture = picUrl.Location;
+        }
+    } catch (error) {
+        console.error(error);
+        return response.sendStatus(500);
+    }
+
 
     try {
         const user = await UserService.add(data);
@@ -98,22 +138,24 @@ async function read(request, response) {
 
 async function update(request, response) {
     const bodySchema = z.object({
-        name: z.string().min(1, "Nome é obrigatório"),
-        course: z.enum(["CC", "EC"], { required_error: "Selecione seu curso" }),
-        role: z.enum(["bixe", "veterane"], { required_error: "Selecione uma opção" }),
-        telephone: z.string().regex(/^\d{11}$/, "Telefone para contato"),
-        yearOfEntry: z.number().int().min(1900).max(new Date().getFullYear() + 1),
-        pronouns: z.array(z.string()),
-        ethnicity: z.array(z.string()),
-        city: z.string().min(1, "Informe sua cidade").refine((city) => city != 'Cidade', { message: 'Informe sua cidade' }),
-        approved: z.boolean().optional(),
-        lgbt: z.array(z.string()),
-        parties: z.number().min(0).max(10),
+        name: z.string().min(1, "Nome é obrigatório").optional(),
+        course: z.enum(["CC", "EC"], { required_error: "Selecione seu curso" }).optional(),
+        role: z.enum(["bixe", "veterane"], { required_error: "Selecione uma opção" }).optional(),
+        telephone: z.string().regex(/^\d{11}$/, "Telefone para contato").optional(),
+        yearOfEntry: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
+        pronouns: z.array(z.string()).optional(),
+        ethnicity: z.array(z.string()).optional(),
+        city: z.string().min(1, "Informe sua cidade").refine((city) => city != 'Cidade', { message: 'Informe sua cidade' }).optional(),
+        selectedGodparentsIds: z.array(z.string().uuid()).optional(),
+        approvalStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
+        lgbt: z.array(z.string()).optional(),
+        parties: z.number().min(0).max(10).optional(),
         hobby: z.string().optional(),
         music: z.string().optional(),
         games: z.string().optional(),
         sports: z.string().optional(),
         picture: z.string().optional(),
+        whiteboard: z.string().optional(),
     });
 
     const idSchema = z.string().uuid();
@@ -132,7 +174,6 @@ async function update(request, response) {
     }
 
     try {
-
         // Image validation
         if (data.picture) {
             const preImg = data.picture.split('base64,').pop();
@@ -161,6 +202,46 @@ async function update(request, response) {
     
             data.picture = picUrl.Location;
         }
+
+        if (data.whiteboard) {
+            const preImg = data.whiteboard.split('base64,').pop();
+            const img = Buffer.from(preImg, 'base64');
+            const fileType = await fileTypeFromBuffer(img);
+
+            if (!fileType || !ACCEPTED_IMAGE_TYPES.includes(fileType.mime)) {
+                return response.status(400).json({ error: { message: "Invalid image type", code: "invalid_image_type" } });
+            }
+
+            if (img.length > 5 * 1024 * 1024) {
+                return response.status(400).json({ error: { message: "Image too large", code: "image_too_large" } });
+            }
+
+            const whiteboardUrl = await new Upload({
+                client: s3,
+
+                params: {
+                    Bucket: process.env.AWS_BUCKET_NAME,
+                    Key: `${id}-whiteboard.${fileType.ext}`,
+                    Body: img,
+                    ContentType: fileType.mime,
+                    ACL: 'public-read',
+                },
+            }).done();
+
+            data.whiteboard = whiteboardUrl.Location;
+        }
+    } catch (error) {
+        console.error(error);
+        return response.sendStatus(500);
+    }
+
+    try {
+        if (data.selectedGodparentsIds) {
+            data.selectedGodparents = {
+                connect: data.selectedGodparentsIds.map(id => ({ id })),
+            };
+            delete data.selectedGodparentsIds;
+        }
     } catch (error) {
         console.error(error);
         return response.sendStatus(500);
@@ -172,7 +253,9 @@ async function update(request, response) {
         const user = await UserService.update(id, data);
         return response.json(user);
     } catch (error) {
-        return response.sendStatus(404);
+        console.error("Error in UserController.update:");
+        console.error(error);
+        return response.sendStatus(500);
     }
 }
 
@@ -253,6 +336,39 @@ async function unapprove(request, response) {
     }
 }
 
+async function updatePassword(request, response) {
+    const bodySchema = z.object({
+        currentPassword: z.string().min(8, "Senha atual deve ter pelo menos 8 caracteres"),
+        newPassword: z.string().min(8, "Nova senha deve ter pelo menos 8 caracteres"),
+    });
+
+    const idSchema = z.string().uuid();
+
+    let data, id;
+
+    try {
+        data = await bodySchema.parseAsync(request.body);
+        id = idSchema.parse(request.params.id);
+    } catch (error) {
+        return response.status(400).json(generateFormattedError(error));
+    }
+
+    try {
+        const newPasswordHash = await bcrypt.hash(data.newPassword, 10);
+        const result = await UserService.updatePassword(id, data.currentPassword, newPasswordHash);
+
+        if (!result) {
+            return response.status(400).json({ error: { message: "Senha atual incorreta ou usuário não encontrado" } });
+        }
+
+        return response.status(200).json({ message: "Senha atualizada com sucesso" });
+    } catch (error) {
+        console.error("Error in UserController.updatePassword:");
+        console.error(error);
+        return response.sendStatus(500);
+    }
+}
+
 async function getAllUsers(_request, response) {
     try {
         const users = await UserService.getAllUsers();
@@ -287,4 +403,95 @@ async function addGodparentRelations(request, response) {
     }
 }
 
-export default { add, read, update, del, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations };
+async function getGodparents(_request, response) {
+    try {
+        const godparents = await UserService.getGodparents();
+        return response.json(godparents);
+    } catch (error) {
+        console.error("Error in UserController.getGodparents:");
+        console.error(error);
+        return response.sendStatus(500);
+    }
+}
+
+async function resetPassword(request, response) {
+    const bodySchema = z.object({
+        email: z.string().email(),
+    });
+
+    let data;
+
+    try {
+        data = bodySchema.parse(request.body);
+    } catch (error) {
+        return response.status(400).json(generateFormattedError(error));
+    }
+
+    let user;
+    const startTime = Date.now();
+
+    try {
+        user = await UserService.findByEmail(data.email);
+    } catch (error) {
+        const elapsedTime = Date.now() - startTime;
+        const delayNeeded = Math.max(0, 300 - elapsedTime);
+        await new Promise(resolve => setTimeout(resolve, delayNeeded));
+        return response.status(200).json({ message: "If the email exists, a reset link has been sent" });
+    }
+
+    if (!user) {
+        const elapsedTime = Date.now() - startTime;
+        const delayNeeded = Math.max(0, 300 - elapsedTime);
+        await new Promise(resolve => setTimeout(resolve, delayNeeded));
+        return response.status(200).json({ message: "If the email exists, a reset link has been sent" });
+    }
+
+    try {
+        const token = await UserService.createPasswordResetToken(user);
+        await MailingService.sendResetInfo(data.email, user, token);
+        const elapsedTime = Date.now() - startTime;
+        const delayNeeded = Math.max(0, 300 - elapsedTime);
+        await new Promise(resolve => setTimeout(resolve, delayNeeded));
+        return response.status(200).json({ message: "If the email exists, a reset link has been sent" });
+    } catch (error) {
+        console.error("Error in UserController.resetPassword:");
+        console.error(error);
+        return response.sendStatus(500);
+    }
+}
+
+async function resetPasswordConfirm(request, response) {
+    const bodySchema = z.object({
+        token: z.string().min(1),
+        newPassword: z.string()
+            .min(8, "Senha deve ter pelo menos 8 caracteres")
+    });
+
+    let data;
+
+    try {
+        data = await bodySchema.parseAsync(request.body);
+    } catch (error) {
+        return response.status(400).json(generateFormattedError(error));
+    }
+
+    try {
+        const newPasswordHash = await bcrypt.hash(data.newPassword, 10);
+        const result = await UserService.consumePasswordResetToken(
+            data.token,
+            newPasswordHash,
+        );
+
+        if (!result) {
+            return response.status(400).json({ error: { message: "Invalid or expired reset token" } });
+        }
+
+        return response.status(200).json({ message: "Password updated" });
+    } catch (error) {
+        console.error("Error in UserController.resetPasswordConfirm:");
+        console.error(error);
+        return response.sendStatus(500);
+    }
+}
+
+export default { add, read, update, del, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations, getGodparents, resetPassword, resetPasswordConfirm, updatePassword };

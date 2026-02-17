@@ -10,9 +10,15 @@ const routes = express.Router();
 
 routes.post("/users/signup", UserController.add);
 
+routes.post("/users/resetPassword", UserController.resetPassword);
+
+routes.post("/users/resetPassword/confirm", UserController.resetPasswordConfirm);
+
 routes.use("/users", AuthMiddleware);
 
 routes.post("/users", UserController.add, RequireAdminMiddleware);
+
+routes.get("/users/godparents", UserController.getGodparents);
 
 routes.post("/users/addGodparentRelations", UserController.addGodparentRelations, RequireAdminMiddleware);
 
@@ -31,6 +37,8 @@ routes.put("/users/:id/unapprove", UserController.unapprove, RequireAdminMiddlew
 routes.get("/users/:id", UserController.read, RequireSelfMiddleware);
 
 routes.put("/users/:id", UserController.update, RequireSelfMiddleware);
+
+routes.put("/users/:id/password", UserController.updatePassword, RequireSelfMiddleware);
 
 routes.delete("/users/:id", UserController.del, RequireAdminMiddleware);
 

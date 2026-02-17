@@ -8,25 +8,32 @@ datasource db {
 }
 
 model User {
-  id       String  @id @default(uuid()) @db.Uuid
-  email    String  @unique
-  name     String?
-  password String
-  status   Boolean @default(false)
-  picture  String?
+  id        String  @id @default(uuid()) @db.Uuid
+  email     String  @unique
+  name      String?
+  password  String
+  status    Boolean @default(false)
+  picture   String?
   telephone String?
 
-  course       Course?
-  yearOfEntry  Int?
-  pronouns     String[]
-  ethnicity    String[]
-  city         String?
-  lgbt         String[]
-  parties      Int?
-  hobby        String?
-  music        String?
-  games        String?
-  sports       String?
+  passwordResetTokens PasswordResetToken[]
+  
+  whiteboard String?
+
+  course      Course?
+  yearOfEntry Int?
+  pronouns    String[]
+  ethnicity   String[]
+  city        String?
+  lgbt        String[]
+  parties     Int?
+  hobby       String?
+  music       String?
+  games       String?
+  sports      String?
+
+  selectedGodparents User[] @relation("selectedGodparents")
+  selectedBy         User[] @relation("selectedGodparents")
 
   approvalStatus ApprovalStatus @default(PENDING)
 
@@ -67,4 +74,18 @@ model GodparentRelation {
 
   @@id([godparentId, godchildId]) // Composite Primary Key
   @@map("godparent_relations") // Naming the join table explicitly
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }

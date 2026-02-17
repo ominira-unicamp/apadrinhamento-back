@@ -1,3 +1,7 @@
+import crypto from "node:crypto";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
+
 import { EntryExistsError } from "#errors/EntryExists.js";
 import { prisma } from "../PrismaClient.js";
 
@@ -14,6 +18,29 @@ const SELECTION_SET = {
     createdAt: true,
     updatedAt: true,
 };
+
+function getResetConfig() {
+    const secret = process.env.RESET_PASSWORD_JWT_SECRET || process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error("Missing reset password JWT secret");
+    }
+
+    const ttl = Number.parseInt(
+        process.env.RESET_PASSWORD_TOKEN_TTL ?? "900",
+        10,
+    );
+
+    return {
+        secret,
+        ttl,
+        issuer: process.env.RESET_PASSWORD_ISSUER ?? "apadrinhamento-back",
+        audience: process.env.RESET_PASSWORD_AUDIENCE ?? "password-reset",
+    };
+}
+
+function hashResetTokenId(jti) {
+    return crypto.createHash("sha256").update(jti).digest("hex");
+}
 
 async function add(data) {
     let user;
@@ -36,6 +63,27 @@ async function add(data) {
 async function read(id) {
     const user = await prisma.user.findUnique({
         include: {
+            selectedGodparents: {
+                select: {
+                    id: true,
+                    name: true,
+                    course: true,
+                    email: true,
+                    picture: true,
+                    whiteboard: true,
+                    hobby: true,
+                    music: true,
+                    games: true,
+                    sports: true,
+                    parties: true,
+                    city: true,
+                    telephone: true,
+                    yearOfEntry: true,
+                    pronouns: true,
+                    ethnicity: true,
+                    lgbt: true,
+                }
+            },
             godchildRelation: {
                 include: {
                     godparent: {
@@ -109,6 +157,7 @@ async function del(id) {
 }
 
 async function getStats() {
+    // Accounts that finished signup as vets (did step-two but might not be approved yet)
     const vets = await prisma.user.count({
         where: {
             role: 'veterane',
@@ -116,6 +165,7 @@ async function getStats() {
         },
     });
 
+    // Accounts that finished signup as bixes (did step-two)
     const bixes = await prisma.user.count({
         where: {
             role: 'bixe',
@@ -123,16 +173,19 @@ async function getStats() {
         },
     });
 
+    // Accounts that still didn't finish signup (didn't do step-two)
     const pending = await prisma.user.count({
         where: {
             status: false,
         },
     });
 
+    // Approved vets whose accounts are finished
     const approved = await prisma.user.count({
         where: {
-            approved: true,
+            approvalStatus: 'APPROVED',
             role: 'veterane',
+            status: true
         },
     });
 
@@ -257,4 +310,159 @@ async function addGodparentRelations(data) {
     return relations;
 }
 
-export default { add, read, update, del, getAuthData, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations };
+async function getGodparents() {
+    const godparents = await prisma.user.findMany({
+        where: {
+            OR: [
+                { role: 'veterane' },
+                { role: 'ADMIN' },
+            ],
+            status: true,
+            approvalStatus: 'APPROVED',
+        },
+        select: {
+            id: true,
+            name: true,
+            course: true,
+            hobby: true,
+            music: true,
+            games: true,
+            sports: true,
+            parties: true,
+            city: true,
+            whiteboard: true,
+            yearOfEntry: true,
+            _count: {
+                select: {
+                    godchildRelation: true,
+                },
+            }
+        }
+    });
+
+    return godparents.filter(godparent => godparent._count.godchildRelation < 2).map(godparent => {
+        delete godparent._count;
+        return godparent;
+    });
+}
+
+async function findByEmail(email) {
+    const user = await prisma.user.findUnique({
+        where: {
+            email,
+        },
+    });
+
+    return user;
+}
+
+async function createPasswordResetToken(user) {
+    const { secret, ttl, issuer, audience } = getResetConfig();
+    const jti = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + ttl * 1000);
+    const tokenHash = hashResetTokenId(jti);
+
+    await prisma.passwordResetToken.deleteMany({
+        where: { userId: user.id },
+    });
+
+    await prisma.passwordResetToken.create({
+        data: {
+            userId: user.id,
+            tokenHash,
+            expiresAt,
+        },
+    });
+
+    const token = jwt.sign(
+        {
+            id: user.id,
+            name: user.name,
+            jti,
+            typ: "password-reset",
+        },
+        secret,
+        {
+            expiresIn: `${ttl}s`,
+            issuer,
+            audience,
+        },
+    );
+
+    return token;
+}
+
+async function consumePasswordResetToken(token, newPasswordHash) {
+    const { secret, issuer, audience } = getResetConfig();
+    let payload;
+
+    try {
+        payload = jwt.verify(token, secret, { issuer, audience });
+    } catch {
+        return null;
+    }
+
+    if (!payload || payload.typ !== "password-reset" || !payload.jti) {
+        return null;
+    }
+
+    const userId = payload.id || payload.sub;
+    if (!userId) {
+        return null;
+    }
+
+    const tokenHash = hashResetTokenId(payload.jti);
+
+    return prisma.$transaction(async (tx) => {
+        const tokenRecord = await tx.passwordResetToken.findFirst({
+            where: {
+                userId,
+                tokenHash,
+                usedAt: null,
+                expiresAt: { gt: new Date() },
+            },
+        });
+
+        if (!tokenRecord) {
+            return null;
+        }
+
+        await tx.passwordResetToken.update({
+            where: { id: tokenRecord.id },
+            data: { usedAt: new Date() },
+        });
+
+        await tx.user.update({
+            where: { id: userId },
+            data: { password: newPasswordHash },
+        });
+
+        return { userId, name: payload.name };
+    });
+}
+
+async function updatePassword(userId, currentPasswordHash, newPasswordHash) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { password: true },
+    });
+
+    if (!user) {
+        return null;
+    }
+
+    const passwordMatch = await bcrypt.compare(currentPasswordHash, user.password);
+    if (!passwordMatch) {
+        return null;
+    }
+
+    const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { password: newPasswordHash },
+        select: SELECTION_SET,
+    });
+
+    return updatedUser;
+}
+
+export default { add, read, update, del, getAuthData, getToMatch, getPendingApproval, approve, unapprove, getAllUsers, getStats, addGodparentRelations, getGodparents, findByEmail, createPasswordResetToken, consumePasswordResetToken, updatePassword };
