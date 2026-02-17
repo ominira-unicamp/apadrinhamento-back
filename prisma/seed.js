@@ -14,15 +14,15 @@ async function main() {
         where: { email: process.env.DEFAULT_ADMIN_EMAIL },
         update: {
             status: true,
-            approved: true,
+            approvalStatus: "APPROVED",
             role: "ADMIN",
+            password: password,
         },
         create: {
             name: "Super Administrator",
             email: process.env.DEFAULT_ADMIN_EMAIL,
             role: "ADMIN",
-            status: true,
-            approved: true,
+            approvalStatus: "APPROVED",
             password: password,
         },
     });
