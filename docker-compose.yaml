@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_PASSWORD: senha
     volumes:
-      - ./data/:/var/lib/postgresql/data 
+      - db-data:/var/lib/postgresql/data 
     ports:
       - 5432:5432
  
@@ -16,3 +16,19 @@ services:
     restart: always
     ports:
       - 8080:8080
+
+  server:
+    build: .
+    container_name: server-apadrinhamento
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgres://postgres:senha@db:5432/padrinho
+    restart: always
+    ports:
+      - "${API_PORT:-3000}:3000"
+    depends_on:
+      - db
+
+volumes:
+  db-data:

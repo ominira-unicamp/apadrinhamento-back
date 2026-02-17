@@ -1,15 +1,16 @@
 {
   "name": "apadrinhamento-back",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
-    "start:migrate:prod": "prisma migrate deploy && node src/server.js",
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "start:migrate:prod": "prisma migrate deploy && node src/index.js",
     "lint": "eslint src --fix",
     "prisma:generate": "prisma generate",
-    "prisma:generate:no-erd": "prisma generate --generator client"
+    "prisma:generate:no-erd": "prisma generate --generator client",
+    "prisma:deploy": "prisma migrate deploy"
   },
   "imports": {
     "#routes/*": "./src/routes/*",
