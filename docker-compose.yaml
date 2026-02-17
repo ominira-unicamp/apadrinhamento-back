@@ -38,6 +38,9 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:senha@db:5432/padrinho
     restart: always
+    volumes:
+      # If using secure, uncomment the line below
+      #- certs:/usr/app/certs
     ports:
       - "${API_PORT:-3000}:3000"
     depends_on:
