@@ -30,19 +30,15 @@ services:
   server:
     build:
       context: .
-      args:
-        SECURE: ${SECURE:-false}
     container_name: server-apadrinhamento
     env_file:
       - .env
-    environment:
-      - DATABASE_URL=postgres://postgres:senha@db:5432/padrinho
     restart: always
     volumes:
       # If using secure, uncomment the line below
-      #- certs:/usr/app/certs
+      #- ./certs:/usr/app/certs
     ports:
-      - "${API_PORT:-3000}:3000"
+      - "3000:3000"
     depends_on:
       db:
         condition: service_healthy
