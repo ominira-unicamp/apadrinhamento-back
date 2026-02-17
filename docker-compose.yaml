@@ -28,7 +28,10 @@ services:
         condition: service_healthy
 
   server:
-    build: .
+    build:
+      context: .
+      args:
+        SECURE: ${SECURE:-false}
     container_name: server-apadrinhamento
     env_file:
       - .env
