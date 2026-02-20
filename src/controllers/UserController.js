@@ -30,7 +30,6 @@ async function add(request, response) {
         email: z.string().regex(/^[a-zA-Z][0-9]{6}@dac.unicamp.br$/),
         password: z.string().min(8).transform(async (val) => await bcrypt.hash(val, 10)),
         telephone: z.string().regex(/^\d{11}$/, "Telefone deve conter exatamente 11 dígitos"),
-        course: z.enum(["EC", "CC"]),
         role: z.enum(["bixe", "veterane"]),
         yearOfEntry: z.number().int().min(1900).max(new Date().getFullYear() + 1),
         pronouns: z.array(z.string()).optional(),
@@ -140,14 +139,12 @@ async function read(request, response) {
 async function update(request, response) {
     const bodySchema = z.object({
         name: z.string().min(1, "Nome é obrigatório").optional(),
-        course: z.enum(["CC", "EC"], { required_error: "Selecione seu curso" }).optional(),
         role: z.enum(["bixe", "veterane"], { required_error: "Selecione uma opção" }).optional(),
         telephone: z.string().regex(/^\d{11}$/, "Telefone para contato").optional(),
         yearOfEntry: z.number().int().min(1900).max(new Date().getFullYear() + 1).optional(),
         pronouns: z.array(z.string()).optional(),
         ethnicity: z.array(z.string()).optional(),
         city: z.string().min(1, "Informe sua cidade").refine((city) => city != 'Cidade', { message: 'Informe sua cidade' }).optional(),
-        selectedGodparentsIds: z.array(z.string().uuid()).optional(),
         approvalStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
         lgbt: z.array(z.string()).optional(),
         parties: z.number().min(0).max(10).optional(),
@@ -156,7 +153,6 @@ async function update(request, response) {
         games: z.string().optional(),
         sports: z.string().optional(),
         picture: z.string().optional(),
-        whiteboard: z.string().optional(),
     });
 
     const idSchema = z.string().uuid();
