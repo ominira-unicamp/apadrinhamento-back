@@ -90,6 +90,7 @@ async function add(request, response) {
 
 
     try {
+        data.status = true;
         const user = await UserService.add(data);
         const token = jwt.sign({ id: user.id, role: user.role, name: user.name }, process.env.JWT_SECRET, {
             expiresIn: "7d",
